@@ -22,4 +22,53 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/result"
         android:text="扫码" />
+
+
+    <View
+        android:id="@+id/view1"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_below="@+id/btn"
+        android:background="@android:color/black" />
+
+    <EditText
+        android:id="@+id/et_code"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/view1"
+        android:textSize="16sp" />
+
+    <RelativeLayout
+        android:id="@+id/rl_create"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/et_code">
+
+        <Button
+            android:id="@+id/btn_create"
+            android:layout_width="120dp"
+            android:layout_height="45dp"
+            android:text="生成" />
+
+
+        <CheckBox
+            android:id="@+id/cb_havelogo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toRightOf="@+id/btn_create"
+            android:checked="true"
+            android:text="带logo" />
+
+
+    </RelativeLayout>
+
+
+    <ImageView
+        android:id="@+id/iv_create_result"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/rl_create"
+        android:layout_marginTop="10dp"
+        android:src="@mipmap/ic_launcher" />
 </RelativeLayout>

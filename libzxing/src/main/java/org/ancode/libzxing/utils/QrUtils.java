@@ -2,22 +2,27 @@ package org.ancode.libzxing.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
+import com.google.zxing.EncodeHintType;
 import com.google.zxing.PlanarYUVLuminanceSource;
 import com.google.zxing.ReaderException;
 import com.google.zxing.Result;
+import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.GlobalHistogramBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 import java.util.Arrays;
 import java.util.Hashtable;
 
 /**
  * Created by xingli on 12/25/15.
- *
+ * <p>
  * 二维码相关功能类
  */
 public class QrUtils {
@@ -60,7 +65,7 @@ public class QrUtils {
      * RGB转YUV420sp
      *
      * @param yuv420sp inputWidth * inputHeight * 3 / 2
-     * @param argb inputWidth * inputHeight
+     * @param argb     inputWidth * inputHeight
      * @param width
      * @param height
      */
@@ -169,12 +174,12 @@ public class QrUtils {
             hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
             hints.put(DecodeHintType.POSSIBLE_FORMATS, BarcodeFormat.QR_CODE);
             PlanarYUVLuminanceSource source =
-                new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
+                    new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
             /**
              * HybridBinarizer算法使用了更高级的算法，但使用GlobalHistogramBinarizer识别效率确实比HybridBinarizer要高一些。
-             * 
+             *
              * GlobalHistogram算法：（http://kuangjianwei.blog.163.com/blog/static/190088953201361015055110/）
-             * 
+             *
              * 二值化的关键就是定义出黑白的界限，我们的图像已经转化为了灰度图像，每个点都是由一个灰度值来表示，就需要定义出一个灰度值，大于这个值就为白（0），低于这个值就为黑（1）。
              * 在GlobalHistogramBinarizer中，是从图像中均匀取5行（覆盖整个图像高度），每行取中间五分之四作为样本；以灰度值为X轴，每个灰度值的像素个数为Y轴建立一个直方图，
              * 从直方图中取点数最多的一个灰度值，然后再去给其他的灰度值进行分数计算，按照点数乘以与最多点数灰度值的距离的平方来进行打分，选分数最高的一个灰度值。接下来在这两个灰度值中间选取一个区分界限，
@@ -188,4 +193,105 @@ public class QrUtils {
         }
         return result;
     }
+
+
+    //宽度值，影响中间图片大小
+    private static int IMAGE_HALFWIDTH = 50;
+
+    /**
+     * //生成二维码，默认大小500*500，网址，汉字
+     *
+     * @param text
+     * @return
+     */
+
+    public static Bitmap createQRCode(String text) throws Exception {
+        return createQRCode(text, 500);
+    }
+
+    /**
+     * 生成二维码，不带logo
+     *
+     * @param text
+     * @param size
+     * @return
+     */
+    public static Bitmap createQRCode(String text, int size) throws Exception {
+        Hashtable<EncodeHintType, String> hints = new Hashtable<>();
+        hints.put(EncodeHintType.CHARACTER_SET, "utf-8");
+        BitMatrix bitMatrix = new QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, hints);
+        int[] pixels = new int[size * size];
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (bitMatrix.get(x, y)) {
+                    pixels[y * size + x] = 0xff000000;
+                } else {
+                    pixels[y * size + x] = 0xffffffff;
+                }
+            }
+        }
+        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        bitmap.setPixels(pixels, 0, size, 0, 0, size, size);
+        return bitmap;
+    }
+
+    /**
+     * 生成默认大小带图片的二维码
+     *
+     * @param text
+     * @param bitmap
+     * @return
+     */
+    public static Bitmap createQRCodeWithLogo(String text, Bitmap bitmap) throws Exception {
+        return createQRCodeWithLogo(text, 500, bitmap);
+    }
+
+    /**
+     * 生成带图片的二维码
+     *
+     * @param text   文本,网址
+     * @param size   图片大小
+     * @param bitmap 图片
+     * @return
+     */
+    public static Bitmap createQRCodeWithLogo(String text, int size, Bitmap bitmap) throws Exception {
+        IMAGE_HALFWIDTH = size / 10;
+        Hashtable<EncodeHintType, Object> hints = new Hashtable<>();
+        hints.put(EncodeHintType.CHARACTER_SET, "utf-8");
+
+        hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+        BitMatrix bitMatrix = new QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, hints);
+
+        int width = bitMatrix.getWidth();
+        int height = bitMatrix.getHeight();
+        int halfW = width / 2;
+        int halfH = height / 2;
+
+        Matrix m = new Matrix();
+        float sx = (float) 2 * IMAGE_HALFWIDTH / bitmap.getWidth();
+        float sy = (float) 2 * IMAGE_HALFWIDTH / bitmap.getHeight();
+        m.setScale(sx, sy);
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, false);
+
+        int[] pixels = new int[size * size];
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (x > halfW - IMAGE_HALFWIDTH && x < halfW + IMAGE_HALFWIDTH &&
+                        y > halfH - IMAGE_HALFWIDTH && y < halfH + IMAGE_HALFWIDTH) {
+                    pixels[y * width + x] = bitmap.getPixel(x - halfW + IMAGE_HALFWIDTH, y - halfH + IMAGE_HALFWIDTH);
+                } else {
+                    if (bitMatrix.get(x, y)) {
+                        pixels[y * size + x] = 0xff000000;
+                    } else {
+                        pixels[y * size + x] = 0xffffffff;
+                    }
+                }
+            }
+        }
+        Bitmap bitmap1 = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        bitmap1.setPixels(pixels, 0, size, 0, 0, size, size);
+        return bitmap1;
+    }
+
+
 }
