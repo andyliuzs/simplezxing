@@ -16,6 +16,7 @@ import android.os.Vibrator;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
@@ -35,6 +36,7 @@ import org.ancode.libzxing.decode.DecodeImageCallback;
 import org.ancode.libzxing.decode.DecodeImageThread;
 import org.ancode.libzxing.decode.DecodeManager;
 import org.ancode.libzxing.decode.InactivityTimer;
+import org.ancode.libzxing.utils.RealPathUtil;
 import org.ancode.libzxing.view.QrCodeFinderView;
 
 import java.io.IOException;
@@ -70,7 +72,7 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     private Executor mQrCodeExecutor;
     private Handler mHandler;
     private TextView tv_torch_view;
-
+    private TextView qrcode_from_img;
     private String mTitle;
     private int bColor = -1;
     private static final String QR_TITLE = "qr_title";
@@ -147,6 +149,14 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
         mHasSurface = false;
         tv_torch_view = (TextView) findViewById(R.id.tv_torch_view);
         tv_torch_view.setOnClickListener(this);
+        qrcode_from_img = (TextView) findViewById(R.id.qrcode_from_img);
+        qrcode_from_img.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openSystemAlbum();
+
+            }
+        });
     }
 
     private void initData() {
@@ -385,16 +395,20 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
                 finish();
                 break;
             case REQUEST_SYSTEM_PICTURE:
-                Uri uri = data.getData();
-                Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-                if (null != cursor) {
-                    cursor.moveToFirst();
-                    String imgPath = cursor.getString(1); // 图片文件路径
-                    cursor.close();
-                    if (null != mQrCodeExecutor && !TextUtils.isEmpty(imgPath)) {
-                        mQrCodeExecutor.execute(new DecodeImageThread(imgPath, mDecodeImageCallback));
+                try {
+                    Uri uri = data.getData();
+                    if (null != uri) {
+                        String imgPath = RealPathUtil.getRealFilePath(this, uri);
+                        Log.e("QRCODE", "imgpath =" + imgPath);
+                        if (null != mQrCodeExecutor && !TextUtils.isEmpty(imgPath)) {
+                            mQrCodeExecutor.execute(new DecodeImageThread(imgPath, mDecodeImageCallback));
+                        }
                     }
+                } catch (Exception e) {
+                    Log.e("QRCODE", "get file path error", e);
+                    e.printStackTrace();
                 }
+
                 break;
         }
     }
@@ -402,12 +416,14 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     private DecodeImageCallback mDecodeImageCallback = new DecodeImageCallback() {
         @Override
         public void decodeSucceed(Result result) {
+            Log.i("QRCODE", "success " + result.getText());
             mHandler.obtainMessage(MSG_DECODE_SUCCEED, result).sendToTarget();
         }
 
         @Override
         public void decodeFail(int type, String reason) {
             mHandler.sendEmptyMessage(MSG_DECODE_FAIL);
+            Log.i("QRCODE", "failed " + reason);
         }
     };
 
@@ -426,6 +442,7 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
             switch (msg.what) {
                 case MSG_DECODE_SUCCEED:
                     Result result = (Result) msg.obj;
+                    Log.i("QRCODE", "scan success reault = " + result);
                     if (null == result) {
                         mDecodeManager.showCouldNotReadQrCodeFromPicture(qrCodeActivity);
                     } else {
@@ -443,6 +460,17 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
         private void handleResult(String resultString) {
             QrCodeActivity imagePickerActivity = mWeakQrCodeActivity.get();
             //图片解析成功
+            if (TextUtils.isEmpty(resultString)) {
+//                Toast.makeText(imagePickerActivity, "扫描结果为空，请重试！", Toast.LENGTH_SHORT).show();
+                Log.v("QRCODE", "scan result is null");
+            } else {
+                Intent resultIntent = new Intent();
+                Bundle bundle = new Bundle();
+                bundle.putString("result", resultString);
+                resultIntent.putExtras(bundle);
+                imagePickerActivity.setResult(RESULT_OK, resultIntent);
+                imagePickerActivity.finish();
+            }
         }
 
     }

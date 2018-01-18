@@ -71,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "生成失败", Toast.LENGTH_SHORT).show();
                     e.printStackTrace();
+
                 }
             }
         });

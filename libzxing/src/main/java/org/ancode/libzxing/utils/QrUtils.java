@@ -3,6 +3,7 @@ package org.ancode.libzxing.utils;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.util.Log;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.BinaryBitmap;
@@ -13,6 +14,7 @@ import com.google.zxing.ReaderException;
 import com.google.zxing.Result;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.GlobalHistogramBinarizer;
+import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
@@ -170,9 +172,11 @@ public class QrUtils {
         Result result = null;
         try {
             Hashtable<DecodeHintType, Object> hints = new Hashtable<DecodeHintType, Object>();
-            hints.put(DecodeHintType.CHARACTER_SET, "utf-8");
-            hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+            hints.put(DecodeHintType.CHARACTER_SET, "utf-8");//对应编码
+            hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);//优化精度
             hints.put(DecodeHintType.POSSIBLE_FORMATS, BarcodeFormat.QR_CODE);
+            //复杂模式，开启PURE_BARCODE模式
+            hints.put(DecodeHintType.PURE_BARCODE, Boolean.TRUE);
             PlanarYUVLuminanceSource source =
                     new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
             /**
@@ -185,11 +189,13 @@ public class QrUtils {
              * 从直方图中取点数最多的一个灰度值，然后再去给其他的灰度值进行分数计算，按照点数乘以与最多点数灰度值的距离的平方来进行打分，选分数最高的一个灰度值。接下来在这两个灰度值中间选取一个区分界限，
              * 取的原则是尽量靠近中间并且要点数越少越好。界限有了以后就容易了，与整幅图像的每个点进行比较，如果灰度值比界限小的就是黑，在新的矩阵中将该点置1，其余的就是白，为0。
              */
-            BinaryBitmap bitmap1 = new BinaryBitmap(new GlobalHistogramBinarizer(source));
-            // BinaryBitmap bitmap1 = new BinaryBitmap(new HybridBinarizer(source));
+//            BinaryBitmap bitmap1 = new BinaryBitmap(new GlobalHistogramBinarizer(source));
+             BinaryBitmap bitmap1 = new BinaryBitmap(new HybridBinarizer(source));
             QRCodeReader reader2 = new QRCodeReader();
             result = reader2.decode(bitmap1, hints);
         } catch (ReaderException e) {
+            Log.e("QRCODE", "识别图片失败", e);
+            e.printStackTrace();
         }
         return result;
     }
@@ -226,7 +232,7 @@ public class QrUtils {
                 if (bitMatrix.get(x, y)) {
                     pixels[y * size + x] = 0xff000000;
                 } else {
-                    pixels[y * size + x] = 0xffffffff;
+                    pixels[y * size + x] = 0xffffffff;//千万不要是透明的  否则会识别为黑色
                 }
             }
         }
