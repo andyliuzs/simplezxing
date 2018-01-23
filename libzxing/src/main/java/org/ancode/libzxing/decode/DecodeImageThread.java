@@ -28,25 +28,33 @@ public class DecodeImageThread implements Runnable {
 
     @Override
     public void run() {
-        if (null == mData) {
-            if (!TextUtils.isEmpty(mImgPath)) {
-                Bitmap bitmap = QrUtils.decodeSampledBitmapFromFile(mImgPath, MAX_PICTURE_PIXEL, MAX_PICTURE_PIXEL);
-                this.mData = QrUtils.getYUV420sp(bitmap.getWidth(), bitmap.getHeight(), bitmap);
-                this.mWidth = bitmap.getWidth();
-                this.mHeight = bitmap.getHeight();
-            }
-        }
+        /*****这个方法不好用****/
+//        if (null == mData) {
+//            if (!TextUtils.isEmpty(mImgPath)) {
+//                Bitmap bitmap  = QrUtils.decodeSampledBitmapFromFile(mImgPath, MAX_PICTURE_PIXEL, MAX_PICTURE_PIXEL);
+//                this.mData = QrUtils.getYUV420sp(bitmap.getWidth(), bitmap.getHeight(), bitmap);
+//                this.mWidth = bitmap.getWidth();
+//                this.mHeight = bitmap.getHeight();
+//            }
+//        }
+//
+//        if (mData == null || mData.length == 0 || mWidth == 0 || mHeight == 0) {
+//            if (null != mCallback) {
+//                mCallback.decodeFail(0, "No image data");
+//            }
+//            return;
+//        }
+//        final Result result = QrUtils.decodeImage(mData, mWidth, mHeight);
+        /*****这个方法不好用****/
 
-        if (mData == null || mData.length == 0 || mWidth == 0 || mHeight == 0) {
+
+        Result result = null;
+        try {
+            result = QrUtils.decodeBarcodeYUV(mImgPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
             if (null != mCallback) {
-                mCallback.decodeFail(0, "No image data");
-            }
-            return;
-        }
-
-        final Result result = QrUtils.decodeImage(mData, mWidth, mHeight);
-
-        if (null != mCallback) {
             if (null != result) {
                 mCallback.decodeSucceed(result);
             } else {

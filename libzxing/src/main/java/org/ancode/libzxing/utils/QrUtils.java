@@ -3,12 +3,14 @@ package org.ancode.libzxing.utils;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.DecodeHintType;
 import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatReader;
 import com.google.zxing.PlanarYUVLuminanceSource;
 import com.google.zxing.ReaderException;
 import com.google.zxing.Result;
@@ -198,6 +200,81 @@ public class QrUtils {
             e.printStackTrace();
         }
         return result;
+    }
+    /**
+     * 解析二维码（使用解析YUV编码数据的方式）
+     *
+     * @param path
+     * @return
+     */
+    public static Result decodeBarcodeYUV(String path) {
+        if (TextUtils.isEmpty(path)) {
+            return null;
+        }
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inSampleSize = 1;
+        Bitmap barcode = BitmapFactory.decodeFile(path, opts);
+        Result result = decodeBarcodeYUV(barcode);
+        barcode.recycle();
+        barcode = null;
+        return result;
+    }
+    /**
+     * 解析二维码（使用解析YUV编码数据的方式）
+     *
+     * @param barcode
+     * @return
+     */
+    public static Result decodeBarcodeYUV(Bitmap barcode) {
+        if (null == barcode) {
+            return null;
+        }
+        int width = barcode.getWidth();
+        int height = barcode.getHeight();
+        //以argb方式存放图片的像素
+        int[] argb = new int[width * height];
+        barcode.getPixels(argb, 0, width, 0, 0, width, height);
+        //将argb转换为yuv
+        byte[] yuv = new byte[width * height * 3 / 2];
+        encodeYUV420SP(yuv, argb, width, height);
+        //解析YUV编码方式的二维码
+        Result result = decodeBarcodeYUV(yuv, width, height);
+
+        barcode.recycle();
+        barcode = null;
+        return result;
+    }
+
+    /**
+     * 解析二维码（使用解析YUV编码数据的方式）
+     *
+     * @param yuv
+     * @param width
+     * @param height
+     * @return
+     */
+    private static Result decodeBarcodeYUV(byte[] yuv, int width, int height) {
+        long start = System.currentTimeMillis();
+        MultiFormatReader multiFormatReader = new MultiFormatReader();
+        multiFormatReader.setHints(null);
+
+        Result rawResult = null;
+        PlanarYUVLuminanceSource source = new PlanarYUVLuminanceSource(yuv, width, height, 0, 0,
+                width, height, false);
+        if (source != null) {
+            BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+            try {
+                rawResult = multiFormatReader.decodeWithState(bitmap);
+            } catch (ReaderException re) {
+                re.printStackTrace();
+            } finally {
+                multiFormatReader.reset();
+                multiFormatReader = null;
+            }
+        }
+        long end = System.currentTimeMillis();
+        Log.d("QRCODE", " --barcode decode in " + (end - start) + " ms");
+        return rawResult;
     }
 
 

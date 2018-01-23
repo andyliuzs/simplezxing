@@ -1,6 +1,5 @@
 package org.ancode.libzxing.utils;
 
-import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -8,11 +7,10 @@ import android.content.Context;
 import android.content.CursorLoader;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.text.TextUtils;
+import android.util.Log;
 
 import java.io.File;
 
@@ -23,6 +21,7 @@ import java.io.File;
 public class RealPathUtil {
 
     public static String getRealFilePath(Context context, final Uri uri) {
+        Log.e("QRCODE", "uri = " + uri);
         if (null == uri)
             return null;
         final String scheme = uri.getScheme();
@@ -32,23 +31,49 @@ public class RealPathUtil {
         else if (ContentResolver.SCHEME_FILE.equals(scheme)) {
             data = uri.getPath();
         } else if (ContentResolver.SCHEME_CONTENT.equals(scheme)) {
-            Cursor cursor = context.getContentResolver().query(uri, new String[] { MediaStore.Images.ImageColumns.DATA }, null, null, null);
-            if (null != cursor) {
-                if (cursor.moveToFirst()) {
-                    int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
-                    if (index > -1) {
-                        data = cursor.getString(index);
-                    }
+            if (data == null) {
+                Cursor cursor = context.getContentResolver().query(uri, new String[]{MediaStore.Images.ImageColumns.DATA}, null, null, null);
+                if (null != cursor) {
+                    if (cursor.moveToFirst()) {
+                        int index = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
+                        if (index > -1) {
+                            data = cursor.getString(index);
+                        }
 
+                    }
+                    cursor.close();
                 }
-                cursor.close();
             }
+
             if (data == null) {
                 data = getImageAbsolutePath(context, uri);
             }
 
         }
+        if (data == null) {
+            data = getHwUriPath1(context, uri);
+        }
+        if (data == null) {
+            data = getHwHiDiskPath(context, uri);
+        }
         return data;
+    }
+
+    private static String getHwHiDiskPath(Context context, Uri uri) {
+        String path = null;
+        String sdCard = Environment.getExternalStorageDirectory() + "";
+        Log.i("QRCODE", "sd root path = " + sdCard);
+        if (uri.toString().contains("content://com.huawei.hidisk.fileprovider")) {
+//            content://com.huawei.hidisk.fileprovider/root/storage/emulated/0/xxxx/xxxx/xxxx.png
+            try {
+                //uri.toString().indexOf("/root") + 1
+                path = uri.toString().substring(uri.toString().indexOf(sdCard), uri.toString().length() - 1);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
+        return path;
     }
 
     public static Uri getUri(final String filePath) {
@@ -60,11 +85,10 @@ public class RealPathUtil {
      *
      * @param context
      * @param imageUri
-     * @author yaoxing
-     * @date 2014-10-12
      */
     @TargetApi(19)
     public static String getImageAbsolutePath(Context context, Uri imageUri) {
+
         if (context == null || imageUri == null)
             return null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT && DocumentsContract.isDocumentUri(context, imageUri)) {
@@ -92,7 +116,7 @@ public class RealPathUtil {
                     contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
                 }
                 String selection = MediaStore.Images.Media._ID + "=?";
-                String[] selectionArgs = new String[] { split[1] };
+                String[] selectionArgs = new String[]{split[1]};
                 return getDataColumn(context, contentUri, selection, selectionArgs);
             }
         } // MediaStore (and general)
@@ -112,7 +136,7 @@ public class RealPathUtil {
     public static String getDataColumn(Context context, Uri uri, String selection, String[] selectionArgs) {
         Cursor cursor = null;
         String column = MediaStore.Images.Media.DATA;
-        String[] projection = { column };
+        String[] projection = {column};
         try {
             cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null);
             if (cursor != null && cursor.moveToFirst()) {
@@ -127,8 +151,7 @@ public class RealPathUtil {
     }
 
     /**
-     * @param uri
-     *                The Uri to check.
+     * @param uri The Uri to check.
      * @return Whether the Uri authority is ExternalStorageProvider.
      */
     public static boolean isExternalStorageDocument(Uri uri) {
@@ -136,8 +159,7 @@ public class RealPathUtil {
     }
 
     /**
-     * @param uri
-     *                The Uri to check.
+     * @param uri The Uri to check.
      * @return Whether the Uri authority is DownloadsProvider.
      */
     public static boolean isDownloadsDocument(Uri uri) {
@@ -145,8 +167,7 @@ public class RealPathUtil {
     }
 
     /**
-     * @param uri
-     *                The Uri to check.
+     * @param uri The Uri to check.
      * @return Whether the Uri authority is MediaProvider.
      */
     public static boolean isMediaDocument(Uri uri) {
@@ -154,12 +175,57 @@ public class RealPathUtil {
     }
 
     /**
-     * @param uri
-     *                The Uri to check.
+     * @param uri The Uri to check.
      * @return Whether the Uri authority is Google Photos.
      */
     public static boolean isGooglePhotosUri(Uri uri) {
         return "com.google.android.apps.photos.content".equals(uri.getAuthority());
+    }
+
+    /**
+     * //适配api11-api18,根据uri获取图片的绝对路径。
+     * 针对图片URI格式为Uri:: content://media/external/images/media/1028
+     */
+    private static String getRealPathFromUri_Api11To18(Context context, Uri uri) {
+        String filePath = null;
+        String[] projection = {MediaStore.Images.Media.DATA};
+
+        CursorLoader loader = new CursorLoader(context, uri, projection, null,
+                null, null);
+        Cursor cursor = loader.loadInBackground();
+
+        if (cursor != null) {
+            cursor.moveToFirst();
+            filePath = cursor.getString(cursor.getColumnIndex(projection[0]));
+            cursor.close();
+        }
+        Log.v("QRCODE", "getRealPathFromUri_Api11To18 path=" + filePath);
+        return filePath;
+    }
+
+    private static String getHwUriPath1(Context context, Uri imageUri) {
+        Cursor cursor = context.getContentResolver().query(imageUri, null, null, null, null);
+        String path = null;
+        try {
+            if (cursor != null) {
+                cursor.moveToFirst();
+                String document_id = cursor.getString(0);
+                document_id = document_id.substring(document_id.lastIndexOf(":") + 1);
+                cursor.close();
+                context.getContentResolver().query(
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        null, MediaStore.Images.Media._ID + " = ? ", new String[]{document_id}, null);
+                if (cursor != null) {
+                    cursor.moveToFirst();
+                    path = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));
+                    cursor.close();
+                }
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return path;
     }
 
 }
