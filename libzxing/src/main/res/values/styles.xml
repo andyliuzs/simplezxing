@@ -15,4 +15,19 @@
         <item name="android:textSize">18sp</item>
     </style>
 
+
+    <style name="CustomDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <!--<item name="colorAccent">#000000</item>-->
+        <item name="android:textColorPrimary">#000000</item>
+        <!--<item name="android:background">#FFFFFF</item>-->
+
+        <item name="colorPrimary">#05afe8</item>
+        <item name="colorControlActivated">#05afe8</item>
+
+        <item name="android:colorPrimary">#05afe8</item>
+        <item name="android:colorControlActivated">#05afe8</item>
+        <item name="android:colorAccent">#05afe8</item>
+        <item name="colorAccent">#05afe8</item>
+    </style>
+
 </resources>
