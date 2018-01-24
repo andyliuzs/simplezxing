@@ -192,7 +192,7 @@ public class QrUtils {
              * 取的原则是尽量靠近中间并且要点数越少越好。界限有了以后就容易了，与整幅图像的每个点进行比较，如果灰度值比界限小的就是黑，在新的矩阵中将该点置1，其余的就是白，为0。
              */
 //            BinaryBitmap bitmap1 = new BinaryBitmap(new GlobalHistogramBinarizer(source));
-             BinaryBitmap bitmap1 = new BinaryBitmap(new HybridBinarizer(source));
+            BinaryBitmap bitmap1 = new BinaryBitmap(new HybridBinarizer(source));
             QRCodeReader reader2 = new QRCodeReader();
             result = reader2.decode(bitmap1, hints);
         } catch (ReaderException e) {
@@ -201,6 +201,7 @@ public class QrUtils {
         }
         return result;
     }
+
     /**
      * 解析二维码（使用解析YUV编码数据的方式）
      *
@@ -219,6 +220,7 @@ public class QrUtils {
         barcode = null;
         return result;
     }
+
     /**
      * 解析二维码（使用解析YUV编码数据的方式）
      *
@@ -227,6 +229,7 @@ public class QrUtils {
      */
     public static Result decodeBarcodeYUV(Bitmap barcode) {
         if (null == barcode) {
+            Log.v("QRCODE", "barcode is null return null");
             return null;
         }
         int width = barcode.getWidth();

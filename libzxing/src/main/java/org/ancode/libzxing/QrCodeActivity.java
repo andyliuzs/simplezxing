@@ -28,6 +28,14 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.zxing.Result;
+import com.jph.takephoto.app.TakePhoto;
+import com.jph.takephoto.app.TakePhotoImpl;
+import com.jph.takephoto.model.InvokeParam;
+import com.jph.takephoto.model.TContextWrap;
+import com.jph.takephoto.model.TResult;
+import com.jph.takephoto.permission.InvokeListener;
+import com.jph.takephoto.permission.PermissionManager;
+import com.jph.takephoto.permission.TakePhotoInvocationHandler;
 
 
 import org.ancode.libzxing.camera.CameraManager;
@@ -47,8 +55,8 @@ import java.util.concurrent.Executors;
 /**
  * 二维码扫描类。
  */
-public class QrCodeActivity extends ActionBarActivity implements Callback, OnClickListener {
-
+public class QrCodeActivity extends ActionBarActivity implements Callback, OnClickListener, TakePhoto.TakeResultListener, InvokeListener {
+    private static final String TAG = "QRCODE";
     private static final int REQUEST_SYSTEM_PICTURE = 0;
     private static final int REQUEST_PICTURE = 1;
     public static final int MSG_DECODE_SUCCEED = 1;
@@ -77,7 +85,9 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     private int bColor = -1;
     private static final String QR_TITLE = "qr_title";
     private static final String QR_MAIN_COLOR = "qr_main_color";
-
+    /*****takephoto****/
+    private TakePhoto takePhoto;
+    private InvokeParam invokeParam;
 
     public static void launcher(Activity activity, String title, int color, int requestCode) {
         Intent intent = new Intent(activity, QrCodeActivity.class);
@@ -90,6 +100,7 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     @Override
     public void onCreate(Bundle savedInstanceState) {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getTakePhoto().onCreate(savedInstanceState);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_qr_code);
         Intent intent = getIntent();
@@ -99,8 +110,15 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
         }
         initView();
         initData();
+
+
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        getTakePhoto().onSaveInstanceState(outState);
+        super.onSaveInstanceState(outState);
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -153,8 +171,9 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
         qrcode_from_img.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                openSystemAlbum();
-
+//                openSystemAlbum();
+//                takePhoto.onPickFromDocuments();
+                takePhoto.onPickMultiple(1);
             }
         });
     }
@@ -350,8 +369,8 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
         /* 开启Pictures画面Type设定为image */
         intent.setType("image/*");
         /* 使用Intent.ACTION_GET_CONTENT这个Action */
-//        intent.setAction(Intent.ACTION_GET_CONTENT);//本action会调用出文件存储选择
-        intent.setAction(Intent.ACTION_PICK);//本action只会显示出带有图片的路径
+        intent.setAction(Intent.ACTION_GET_CONTENT);//本action会调用出文件存储选择
+//        intent.setAction(Intent.ACTION_PICK);//本action只会显示出带有图片的路径
         /* 取得相片后返回本画面 */
         startActivityForResult(intent, REQUEST_SYSTEM_PICTURE);
     }
@@ -388,30 +407,31 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
-        if (resultCode != RESULT_OK) {
-            return;
-        }
-        switch (requestCode) {
-            case REQUEST_PICTURE:
-                finish();
-                break;
-            case REQUEST_SYSTEM_PICTURE:
-                try {
-                    Uri uri = data.getData();
-                    if (null != uri) {
-                        String imgPath = RealPathUtil.getRealFilePath(this, uri);
-                        Log.e("QRCODE", "imgpath =" + imgPath);
-                        if (null != mQrCodeExecutor && !TextUtils.isEmpty(imgPath)) {
-                            mQrCodeExecutor.execute(new DecodeImageThread(imgPath, mDecodeImageCallback));
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.e("QRCODE", "get file path error", e);
-                    e.printStackTrace();
-                }
-
-                break;
-        }
+        getTakePhoto().onActivityResult(requestCode, resultCode, data);
+//        if (resultCode != RESULT_OK) {
+//            return;
+//        }
+//        switch (requestCode) {
+//            case REQUEST_PICTURE:
+//                finish();
+//                break;
+//            case REQUEST_SYSTEM_PICTURE:
+//                try {
+//                    Uri uri = data.getData();
+//                    if (null != uri) {
+//                        String imgPath = RealPathUtil.getRealFilePath(this, uri);
+//                        Log.e("QRCODE", "imgpath =" + imgPath);
+//                        if (null != mQrCodeExecutor && !TextUtils.isEmpty(imgPath)) {
+//                            mQrCodeExecutor.execute(new DecodeImageThread(imgPath, mDecodeImageCallback));
+//                        }
+//                    }
+//                } catch (Exception e) {
+//                    Log.e("QRCODE", "get file path error", e);
+//                    e.printStackTrace();
+//                }
+//
+//                break;
+//        }
     }
 
     private DecodeImageCallback mDecodeImageCallback = new DecodeImageCallback() {
@@ -427,6 +447,7 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
             Log.i("QRCODE", "failed " + reason);
         }
     };
+
 
     private static class WeakHandler extends Handler {
         private WeakReference<QrCodeActivity> mWeakQrCodeActivity;
@@ -474,5 +495,72 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
             }
         }
 
+    }
+
+    /*****takephoto****/
+    @Override
+    public void takeSuccess(TResult result) {
+        String path = null;
+
+        if (result != null) {
+
+            path = result.getImage().getCompressPath();
+            if (TextUtils.isEmpty(path)) {
+                path = result.getImage().getOriginalPath();
+            }
+
+            if (TextUtils.isEmpty(path)) {
+                Log.e(TAG, "take path is null");
+                Toast.makeText(this, "获取图片路径失败!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (null != mQrCodeExecutor && !TextUtils.isEmpty(path)) {
+                mQrCodeExecutor.execute(new DecodeImageThread(path, mDecodeImageCallback));
+            }
+        } else {
+            Log.e(TAG, "take result  is null");
+            Toast.makeText(this, "获取图片路径失败!", Toast.LENGTH_SHORT).show();
+        }
+        Log.i(TAG, "takeSuccess：" + path);
+    }
+
+    @Override
+    public void takeFail(TResult result, String msg) {
+        Log.i(TAG, "takeFail:" + msg);
+        Toast.makeText(this, "获取图片失败!", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void takeCancel() {
+        Log.i(TAG, getResources().getString(com.jph.takephoto.R.string.msg_operation_canceled));
+    }
+
+    @Override
+    public PermissionManager.TPermissionType invoke(InvokeParam invokeParam) {
+        PermissionManager.TPermissionType type = PermissionManager.checkPermission(TContextWrap.of(this), invokeParam.getMethod());
+        if (PermissionManager.TPermissionType.WAIT.equals(type)) {
+            this.invokeParam = invokeParam;
+        }
+        return type;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        //以下代码为处理Android6.0、7.0动态权限所需
+        PermissionManager.TPermissionType type = PermissionManager.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        PermissionManager.handlePermissionsResult(this, type, invokeParam, this);
+    }
+
+    /**
+     * 获取TakePhoto实例
+     *
+     * @return
+     */
+    public TakePhoto getTakePhoto() {
+        if (takePhoto == null) {
+            takePhoto = (TakePhoto) TakePhotoInvocationHandler.of(this).bind(new TakePhotoImpl(this, this));
+        }
+        return takePhoto;
     }
 }
