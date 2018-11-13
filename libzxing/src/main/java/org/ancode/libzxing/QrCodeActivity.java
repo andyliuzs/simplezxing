@@ -45,6 +45,7 @@ import org.ancode.libzxing.decode.DecodeImageThread;
 import org.ancode.libzxing.decode.DecodeManager;
 import org.ancode.libzxing.decode.InactivityTimer;
 import org.ancode.libzxing.utils.RealPathUtil;
+import org.ancode.libzxing.view.MyToolBar;
 import org.ancode.libzxing.view.QrCodeFinderView;
 
 import java.io.IOException;
@@ -132,7 +133,7 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     }
 
     private void initToolBar() {
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        MyToolBar toolbar = (MyToolBar) findViewById(R.id.toolbar);
         if (bColor != -1) {
             toolbar.setBackgroundColor(bColor);
         }
@@ -176,6 +177,8 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
                 takePhoto.onPickMultiple(1);
             }
         });
+        tv_torch_view.setVisibility(View.GONE);
+        qrcode_from_img.setVisibility(View.GONE);
     }
 
     private void initData() {
