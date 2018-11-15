@@ -67,24 +67,13 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }, 2500);
                     }
+
+                    @Override
+                    public void cancel() {
+
+                    }
                 });
-                final Intent netIntent = new Intent(QrCodeActivity.QRCODE_INTERNET_REACHABLE_BROADCAST_ACTION);
-                netIntent.putExtra(QrCodeActivity.QRCODE_INTERNET_REACHABLE, false);
 
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        sendBroadcast(netIntent);
-                    }
-                }, 1000);
-
-                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        netIntent.putExtra(QrCodeActivity.QRCODE_INTERNET_REACHABLE, true);
-                        sendBroadcast(netIntent);
-                    }
-                }, 5000);
             }
         });
         btnCreate.setOnClickListener(new View.OnClickListener() {
