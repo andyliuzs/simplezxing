@@ -3,6 +3,8 @@ package org.ancode.simplezxing;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
@@ -13,8 +15,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.zxing.qrcode.encoder.QRCode;
 
 import org.ancode.libzxing.QrCodeActivity;
 import org.ancode.libzxing.utils.BitMapUtils;
@@ -47,8 +47,44 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                QrCodeActivity.launcher(MainActivity.this, "来扫一扫", getResources().getColor(R.color.colorPrimary), scanRequest);
+                //  QrCodeActivity.launcher(MainActivity.this, "来扫一扫", getResources().getColor(R.color.colorPrimary), scanRequest);
+                QrCodeActivity.launcherWithCallBack(MainActivity.this, "来扫一扫", getResources().getColor(R.color.colorPrimary),  new QrCodeActivity.QrCodeCallBack() {
+                    @Override
+                    public void handleResult(final QrCodeActivity activity, final String code) {
+                        activity.showWaitDialog("处理中请稍后...");
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                activity.hideWaitDialog();
+                            }
+                        }, 2000);
 
+                        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(activity, code, Toast.LENGTH_SHORT).show();
+                                activity.finish();
+                            }
+                        }, 2500);
+                    }
+                });
+                final Intent netIntent = new Intent(QrCodeActivity.QRCODE_INTERNET_REACHABLE_BROADCAST_ACTION);
+                netIntent.putExtra(QrCodeActivity.QRCODE_INTERNET_REACHABLE, false);
+
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        sendBroadcast(netIntent);
+                    }
+                }, 1000);
+
+                new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        netIntent.putExtra(QrCodeActivity.QRCODE_INTERNET_REACHABLE, true);
+                        sendBroadcast(netIntent);
+                    }
+                }, 5000);
             }
         });
         btnCreate.setOnClickListener(new View.OnClickListener() {

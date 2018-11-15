@@ -25,6 +25,7 @@ import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import org.ancode.libzxing.R;
 import org.ancode.libzxing.utils.ScreenUtils;
@@ -52,6 +53,7 @@ public final class QrCodeFinderView extends RelativeLayout {
 //    private int mAngleThick;
 //    private int mAngleLength;
     private View scanLine;
+    private TextView tvNoInternet;
 
     public QrCodeFinderView(Context context) {
         this(context, null);
@@ -89,6 +91,7 @@ public final class QrCodeFinderView extends RelativeLayout {
         RelativeLayout relativeLayout = (RelativeLayout) inflater.inflate(R.layout.layout_qr_code_scanner, this);
         FrameLayout frameLayout = (FrameLayout) relativeLayout.findViewById(R.id.qr_code_fl_scanner);
         scanLine = relativeLayout.findViewById(R.id.capture_scan_line);
+        tvNoInternet = (TextView) relativeLayout.findViewById(R.id.tv_no_internet);
         mFrameRect = new Rect();
         LayoutParams layoutParams = (LayoutParams) frameLayout.getLayoutParams();
         mFrameRect.left = (ScreenUtils.getScreenWidth(context) - layoutParams.width) / 2;
@@ -96,6 +99,14 @@ public final class QrCodeFinderView extends RelativeLayout {
         mFrameRect.right = mFrameRect.left + layoutParams.width;
         mFrameRect.bottom = mFrameRect.top + layoutParams.height;
         openScanAnimation();
+    }
+
+    public void netReachable(boolean reachable) {
+        if (reachable) {
+            tvNoInternet.setVisibility(GONE);
+        } else {
+            tvNoInternet.setVisibility(VISIBLE);
+        }
     }
 
     private void openScanAnimation() {
@@ -139,7 +150,6 @@ public final class QrCodeFinderView extends RelativeLayout {
     }
 
 
-
     private void drawText(Canvas canvas, Rect rect) {
         int margin = 60;
         mPaint.setColor(mTextColor);
@@ -153,7 +163,6 @@ public final class QrCodeFinderView extends RelativeLayout {
 //        float left = (ScreenUtils.getScreenWidth(mContext) - mPaint.getTextSize() * text.length()) / 2;
         canvas.drawText(text, left / 2, newY, mPaint);
     }
-
 
 
 //    /**
@@ -220,6 +229,7 @@ public final class QrCodeFinderView extends RelativeLayout {
 //    }
 
     private int left = 0;
+
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
