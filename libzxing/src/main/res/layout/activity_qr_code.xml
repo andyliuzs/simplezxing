@@ -7,22 +7,24 @@
     <org.ancode.libzxing.view.MyToolBar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="48dp"
         android:background="?attr/colorPrimary"
         app:titleTextAppearance="@style/ToolbarTitle">
+
         <TextView
             android:id="@+id/qrcode_from_img"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
             android:layout_gravity="right|center_vertical"
             android:layout_marginRight="12dp"
-            android:layout_centerVertical="true"
             android:clickable="true"
             android:gravity="center"
             android:text="本地选取"
             android:textColor="@android:color/white"
             android:textSize="14sp"
             android:visibility="visible" />
+
         <TextView
             android:id="@+id/tv_torch_view"
             android:layout_width="56dp"
@@ -35,8 +37,6 @@
             android:textColor="@android:color/white"
             android:textSize="14sp"
             android:visibility="visible" />
-
-
 
 
     </org.ancode.libzxing.view.MyToolBar>

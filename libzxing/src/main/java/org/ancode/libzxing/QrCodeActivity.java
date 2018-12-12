@@ -1,19 +1,21 @@
 package org.ancode.libzxing;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
+import android.database.Cursor;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Vibrator;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
@@ -23,7 +25,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
-import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,6 +45,7 @@ import org.ancode.libzxing.decode.DecodeImageCallback;
 import org.ancode.libzxing.decode.DecodeImageThread;
 import org.ancode.libzxing.decode.DecodeManager;
 import org.ancode.libzxing.decode.InactivityTimer;
+import org.ancode.libzxing.utils.RealPathUtil;
 import org.ancode.libzxing.view.MyToolBar;
 import org.ancode.libzxing.view.QrCodeFinderView;
 
@@ -55,7 +57,7 @@ import java.util.concurrent.Executors;
 /**
  * 二维码扫描类。
  */
-public class QrCodeActivity extends ActionBarActivity implements Callback, OnClickListener, TakePhoto.TakeResultListener, InvokeListener {
+public class QrCodeActivity extends AppCompatActivity implements Callback, OnClickListener, TakePhoto.TakeResultListener, InvokeListener {
     private static final String TAG = "QRCODE";
     private static final int REQUEST_SYSTEM_PICTURE = 0;
     private static final int REQUEST_PICTURE = 1;
@@ -89,29 +91,11 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     private TakePhoto takePhoto;
     private InvokeParam invokeParam;
 
-    private static QrCodeCallBack qrCodeCallBack;
-
-    public interface QrCodeCallBack {
-        public void handleResult(QrCodeActivity activity, String code);
-
-        public void cancel();
-
-    }
-
     public static void launcher(Activity activity, String title, int color, int requestCode) {
         Intent intent = new Intent(activity, QrCodeActivity.class);
         intent.putExtra(QrCodeActivity.QR_TITLE, title);
         intent.putExtra(QrCodeActivity.QR_MAIN_COLOR, color);
         activity.startActivityForResult(intent, requestCode);
-        activity.overridePendingTransition(R.anim.push_left_in, R.anim.push_not_move_out);
-    }
-
-    public static void launcherWithCallBack(Activity activity, String title, int color, QrCodeCallBack callBack) {
-        QrCodeActivity.qrCodeCallBack = callBack;
-        Intent intent = new Intent(activity, QrCodeActivity.class);
-        intent.putExtra(QrCodeActivity.QR_TITLE, title);
-        intent.putExtra(QrCodeActivity.QR_MAIN_COLOR, color);
-        activity.startActivity(intent);
         activity.overridePendingTransition(R.anim.push_left_in, R.anim.push_not_move_out);
     }
 
@@ -132,13 +116,6 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
 
     }
 
-    public void setNetReachable(boolean reachable) {
-        if (mQrCodeFinderView != null) {
-            mQrCodeFinderView.netReachable(reachable);
-        }
-    }
-
-
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         getTakePhoto().onSaveInstanceState(outState);
@@ -149,7 +126,6 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             //点左上角返回关闭
-
             finish();
             return true;
         }
@@ -182,7 +158,6 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
             }
         } else {
             mPermissionOk = false;
-
             finish();
         }
     }
@@ -203,8 +178,6 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
                 takePhoto.onPickMultiple(1);
             }
         });
-        tv_torch_view.setVisibility(View.GONE);
-        qrcode_from_img.setVisibility(View.GONE);
     }
 
     private void initData() {
@@ -260,12 +233,7 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
         if (null != mInactivityTimer) {
             mInactivityTimer.shutdown();
         }
-        if(qrCodeCallBack!=null){
-            qrCodeCallBack.cancel();
-            qrCodeCallBack = null;
-        }
         super.onDestroy();
-        hideWaitDialog();
     }
 
     /**
@@ -430,16 +398,12 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
                 }
             });
         } else {
-            if (qrCodeCallBack != null) {
-                qrCodeCallBack.handleResult(this, resultString);
-            } else {
-                Intent resultIntent = new Intent();
-                Bundle bundle = new Bundle();
-                bundle.putString("result", resultString);
-                resultIntent.putExtras(bundle);
-                setResult(RESULT_OK, resultIntent);
-                QrCodeActivity.this.finish();
-            }
+            Intent resultIntent = new Intent();
+            Bundle bundle = new Bundle();
+            bundle.putString("result", resultString);
+            resultIntent.putExtras(bundle);
+            setResult(RESULT_OK, resultIntent);
+            QrCodeActivity.this.finish();
         }
     }
 
@@ -600,44 +564,5 @@ public class QrCodeActivity extends ActionBarActivity implements Callback, OnCli
             takePhoto = (TakePhoto) TakePhotoInvocationHandler.of(this).bind(new TakePhotoImpl(this, this));
         }
         return takePhoto;
-    }
-
-
-    private ProgressDialog progressDialog;
-
-    public void showWaitDialog(String msg) {
-        try {
-            if (progressDialog == null) {
-                progressDialog = new ProgressDialog(this);
-                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-                progressDialog.setMessage(msg);
-                progressDialog.setIndeterminate(true);
-//                indeterminateDrawable
-                progressDialog.setIndeterminateDrawable(getResources().getDrawable(R.drawable.loading_dialog_color));
-                progressDialog.setCancelable(true);
-                progressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                    @Override
-                    public void onCancel(DialogInterface dialogInterface) {
-
-                    }
-                });
-
-            }
-            if (!progressDialog.isShowing())
-                progressDialog.show();
-        } catch (WindowManager.BadTokenException e) {
-
-        }
-    }
-
-    public void hideWaitDialog() {
-        if (progressDialog != null) {
-            progressDialog.dismiss();
-            progressDialog = null;
-        }
-    }
-
-    public void toast(String msg) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 }
